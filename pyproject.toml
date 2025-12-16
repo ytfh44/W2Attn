@@ -1,0 +1,26 @@
+[project]
+name = "w2attn"
+version = "0.1.0"
+description = "A PyTorch implementation of W2Attention mechanism with CUDA support"
+readme = "README.md"
+authors = [
+    { name = "Yesod Yin", email = "ytfh44@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "torch>=2.5.0",
+    "torchvision>=0.20.0",
+    "torchaudio>=2.5.0",
+    "numpy>=2.3.5",
+    "einops>=0.8.1",
+    "pytest>=9.0.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
+
+[[tool.uv.source]]
+url = "https://download.pytorch.org/whl/cu131"
+verify_ssl = true
+
