@@ -32,30 +32,73 @@ theorem w2_dist_sq_nonneg (t1 t2 : GaussianToken n) : 0 ≤ w2_dist_sq t1 t2 := 
   unfold w2_dist_sq
   apply add_nonneg <;> (apply Finset.sum_nonneg; intro i _; exact sq_nonneg _)
 
+def mu_dist (t1 t2 : GaussianToken n) : ℝ := dist t1.mu t2.mu
+
+/-- Convert a function to EuclideanSpace -/
+def toEuclidean (f : n → ℝ) : EuclideanSpace ℝ n :=
+  (WithLp.equiv 2 (n → ℝ)).symm f
+
+def sigma_dist (t1 t2 : GaussianToken n) : ℝ :=
+  dist (toEuclidean (fun i => Real.sqrt (t1.sigma i)))
+       (toEuclidean (fun i => Real.sqrt (t2.sigma i)))
+
+theorem w2_dist_eq_hypot (t1 t2 : GaussianToken n) :
+    w2_dist t1 t2 = Real.sqrt (mu_dist t1 t2 ^ 2 + sigma_dist t1 t2 ^ 2) := by
+  unfold w2_dist w2_dist_sq mu_dist sigma_dist
+  congr 1
+  rw [dist_eq_norm, EuclideanSpace.norm_eq, dist_eq_norm, EuclideanSpace.norm_eq]
+  simp only [Real.sq_sqrt (Finset.sum_nonneg (fun i _ => sq_nonneg _))]
+  congr 1
+  . congr; ext i; simp
+  . congr; ext i; simp [toEuclidean, WithLp.equiv]
+
 /-- Property 3: Triangle Inequality. -/
 theorem w2_triangle (t1 t2 t3 : GaussianToken n) :
     w2_dist t1 t3 ≤ w2_dist t1 t2 + w2_dist t2 t3 := by
-  -- The proof relies on the fact that W2 distance for diagonal covariance
-  -- decomposes into the L2 distance of means plus the L2 distance of sqrt(sigmas).
-  -- D(t1, t3) <= D(t1, t2) + D(t2, t3)
-  -- This is equivalent to showing the triangle inequality in the product space ℝⁿ × ℝⁿ.
+  rw [w2_dist_eq_hypot, w2_dist_eq_hypot, w2_dist_eq_hypot]
+  let dmu12 := mu_dist t1 t2
+  let dmu23 := mu_dist t2 t3
+  let dmu13 := mu_dist t1 t3
+  let dsigma12 := sigma_dist t1 t2
+  let dsigma23 := sigma_dist t2 t3
+  let dsigma13 := sigma_dist t1 t3
 
-  -- Let μ_dist(a, b) = ||a.mu - b.mu||₂
-  -- Let σ_dist(a, b) = ||√a.sigma - √b.sigma||₂
-  -- Then w2_dist(a, b) = √((μ_dist(a,b))² + (σ_dist(a,b))²)
+  have hmu : dmu13 ≤ dmu12 + dmu23 := dist_triangle t1.mu t2.mu t3.mu
+  have hsigma : dsigma13 ≤ dsigma12 + dsigma23 := dist_triangle _ _ _
 
-  -- 1. Triangle inequality holds for μ parts (Euclidean distance):
-  --    μ_dist(t1, t3) <= μ_dist(t1, t2) + μ_dist(t2, t3)
+  let v12 : EuclideanSpace ℝ (Fin 2) := (WithLp.equiv 2 (Fin 2 → ℝ)).symm ![dmu12, dsigma12]
+  let v23 : EuclideanSpace ℝ (Fin 2) := (WithLp.equiv 2 (Fin 2 → ℝ)).symm ![dmu23, dsigma23]
+  let v_sum : EuclideanSpace ℝ (Fin 2) := (WithLp.equiv 2 (Fin 2 → ℝ)).symm ![dmu12 + dmu23, dsigma12 + dsigma23]
+  let v13 : EuclideanSpace ℝ (Fin 2) := (WithLp.equiv 2 (Fin 2 → ℝ)).symm ![dmu13, dsigma13]
 
-  -- 2. Triangle inequality holds for σ parts (L2 distance on vectors of sqrts):
-  --    σ_dist(t1, t3) <= σ_dist(t1, t2) + σ_dist(t2, t3)
+  have h_norm12 : ‖v12‖ = Real.sqrt (dmu12^2 + dsigma12^2) := by
+    rw [EuclideanSpace.norm_eq]
+    simp [Fin.sum_univ_two, v12]
+  have h_norm23 : ‖v23‖ = Real.sqrt (dmu23^2 + dsigma23^2) := by
+    rw [EuclideanSpace.norm_eq]
+    simp [Fin.sum_univ_two, v23]
+  have h_norm_sum : ‖v_sum‖ = Real.sqrt ((dmu12 + dmu23)^2 + (dsigma12 + dsigma23)^2) := by
+    rw [EuclideanSpace.norm_eq]
+    simp [Fin.sum_univ_two, v_sum]
+  have h_norm13 : ‖v13‖ = Real.sqrt (dmu13^2 + dsigma13^2) := by
+    rw [EuclideanSpace.norm_eq]
+    simp [Fin.sum_univ_two, v13]
 
-  -- 3. Combine using Minkowski inequality in ℝ² for the vector norms:
-  --    ||(μ_dist13, σ_dist13)||₂ <= ||(μ_dist12 + μ_dist23, σ_dist12 + σ_dist23)||₂
-  --                             <= ||(μ_dist12, σ_dist12)||₂ + ||(μ_dist23, σ_dist23)||₂
+  rw [←h_norm13, ←h_norm12, ←h_norm23]
 
-  -- Formalization requires casting (n -> ℝ) to EuclideanSpace which hits type barriers
-  sorry
+  calc ‖v13‖
+    _ ≤ ‖v_sum‖ := by
+      rw [h_norm13, h_norm_sum]
+      apply Real.sqrt_le_sqrt
+      gcongr
+      . exact dist_nonneg
+      . exact dist_nonneg
+    _ ≤ ‖v12 + v23‖ := by
+       have : v_sum = v12 + v23 := by
+         ext i
+         fin_cases i <;> simp [v_sum, v12, v23]
+       rw [this]
+    _ ≤ ‖v12‖ + ‖v23‖ := norm_add_le _ _
 
 /-- Property 4: Identity of indiscernibles -/
 theorem w2_self (t : GaussianToken n) : w2_dist t t = 0 := by
