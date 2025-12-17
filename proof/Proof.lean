@@ -4,4 +4,4 @@ import Proof.Basic
 import Proof.RoPE
 import Proof.Metric
 import Proof.Degeneracy
-
+import Proof.DiagCov

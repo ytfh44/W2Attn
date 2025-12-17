@@ -1,0 +1,58 @@
+鉁?[2366/2366] Building Proof.Metric (13s)
+trace: .> LEAN_PATH=D:\PROJECTS\W2Attn\proof\.lake\packages\Cli\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\batteries\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\Qq\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\aesop\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\proofwidgets\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\importGraph\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\LeanSearchClient\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\plausible\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\mathlib\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean c:\Users\Lenovo\.elan\toolchains\leanprover--lean4---v4.27.0-rc1\bin\lean.exe D:\PROJECTS\W2Attn\proof\Proof\Metric.lean -o D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean\Proof\Metric.olean -i D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean\Proof\Metric.ilean -c D:\PROJECTS\W2Attn\proof\.lake\build\ir\Proof\Metric.c --setup D:\PROJECTS\W2Attn\proof\.lake\build\ir\Proof\Metric.setup.json --json
+warning: Proof/Metric.lean:12:0: automatically included section variable(s) unused in theorem `W2Attn.w2_nonneg`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+warning: Proof/Metric.lean:16:0: automatically included section variable(s) unused in theorem `W2Attn.w2_symm`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+warning: Proof/Metric.lean:31:0: automatically included section variable(s) unused in theorem `W2Attn.w2_dist_sq_nonneg`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+error: Proof/Metric.lean:56:22: Tactic `unfold` failed to unfold `sigma_dist_sq` in
+  鈭?i, (t1.mu.ofLp i - t2.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t2.sigma i)) ^ 2 = a12 ^ 2 + b12 ^ 2
+error: Proof/Metric.lean:62:22: Tactic `unfold` failed to unfold `sigma_dist_sq` in
+  鈭?i, (t2.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t2.sigma i) - 鈭?t3.sigma i)) ^ 2 = a23 ^ 2 + b23 ^ 2
+error: Proof/Metric.lean:68:22: Tactic `unfold` failed to unfold `sigma_dist_sq` in
+  鈭?i, (t1.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t3.sigma i)) ^ 2 = a13 ^ 2 + b13 ^ 2
+error: Proof/Metric.lean:73:6: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  w2_dist_sq t1 t2
+in the target expression
+  鈭?鈭?i, (t1.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t3.sigma i)) ^ 2) 鈮?    鈭?鈭?i, (t1.mu.ofLp i - t2.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t2.sigma i)) ^ 2) +
+      鈭?鈭?i, (t2.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t2.sigma i) - 鈭?t3.sigma i)) ^ 2)
+
+n : Type u_1
+inst鉁澛?: Fintype n
+inst鉁?: DecidableEq n
+t1 t2 t3 : GaussianToken n
+a12 : 鈩?:= dist t1.mu t2.mu
+a23 : 鈩?:= dist t2.mu t3.mu
+a13 : 鈩?:= dist t1.mu t3.mu
+sigma_dist_sq : (n 鈫?鈩? 鈫?(n 鈫?鈩? 鈫?鈩?:= fun s1 s2 => 鈭?i, (鈭?s1 i) - 鈭?s2 i)) ^ 2
+b12 : 鈩?:= 鈭?sigma_dist_sq t1.sigma t2.sigma)
+b23 : 鈩?:= 鈭?sigma_dist_sq t2.sigma t3.sigma)
+b13 : 鈩?:= 鈭?sigma_dist_sq t1.sigma t3.sigma)
+eq12 : w2_dist_sq t1 t2 = a12 ^ 2 + b12 ^ 2
+eq23 : w2_dist_sq t2 t3 = a23 ^ 2 + b23 ^ 2
+eq13 : w2_dist_sq t1 t3 = a13 ^ 2 + b13 ^ 2
+鈯?鈭?鈭?i, (t1.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t3.sigma i)) ^ 2) 鈮?    鈭?鈭?i, (t1.mu.ofLp i - t2.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t2.sigma i)) ^ 2) +
+      鈭?鈭?i, (t2.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t2.sigma i) - 鈭?t3.sigma i)) ^ 2)
+warning: Proof/Metric.lean:125:0: automatically included section variable(s) unused in theorem `W2Attn.w2_self`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+error: Lean exited with code 1
+Some required targets logged failures:
+- Proof.Metric
+error: build failed

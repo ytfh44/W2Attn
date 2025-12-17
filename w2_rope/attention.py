@@ -68,44 +68,35 @@ class W2Attention(nn.Module):
         cos, sin = rotary_emb_outputs
         q_mu, k_mu = apply_rotary_pos_emb(q_mu, k_mu, cos, sin)
         
-        # 5. Calculate Score (Gaussian Overlap / Variance Scaled Distance)
-        # OPTIMIZED IMPLEMENTATION
-        # We approximate sigma as a scalar (mean over dim) to avoid O(S^2 D) memory
-        # Scores = -0.5 * ( ||mu_q - mu_k||^2 / (sigma_q + sigma_k) + D * log(sigma_q + sigma_k) )
+        # 5. Calculate Score (Diagonal Covariance - Per-Dimension Weighting)
+        # =================================================================
+        # W2 distance for diagonal Gaussians:
+        #   D² = Σ_d [(μ_q^d - μ_k^d)² / (σ_q^d + σ_k^d)] + Σ_d log(σ_q^d + σ_k^d)
+        #
+        # Memory-efficient formulation using weighted space:
+        #   - Transform to weighted space: q̃ = μ_q / √σ_q, k̃ = μ_k / √σ_k
+        #   - Compute ||q̃||² + ||k̃||² - 2⟨q̃, k̃⟩ (O(S²) memory)
+        #   - Log-det: Σ_d log(σ_q^d) + Σ_d log(σ_k^d)
+        #
+        # Note: This is a principled approximation that captures per-dimension
+        # anisotropy while maintaining O(S²) attention memory (not O(S²D)).
         
-        # a. Squared Euclidean Distance ||mu_q - mu_k||^2 = ||q||^2 + ||k||^2 - 2 <q, k>
-        # q_mu: [B, H, S, D]
-        q_sq = (q_mu ** 2).sum(dim=-1, keepdim=True) # [B, H, S, 1]
-        k_sq = (k_mu ** 2).sum(dim=-1, keepdim=True) # [B, H, S, 1]
+        # a. Weighted Q/K in transformed space
+        q_weighted = q_mu / torch.sqrt(q_sigma)  # [B, H, S, D]
+        k_weighted = k_mu / torch.sqrt(k_sigma)  # [B, H, S, D]
         
-        # Dot term: [B, H, S, S]
-        dot_term = torch.matmul(q_mu, k_mu.transpose(-2, -1))
+        # b. Squared distance in weighted space: ||q̃||² + ||k̃||² - 2⟨q̃, k̃⟩
+        q_sq = (q_weighted ** 2).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
+        k_sq = (k_weighted ** 2).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
+        dot_term = torch.matmul(q_weighted, k_weighted.transpose(-2, -1))  # [B, H, S, S]
+        weighted_dist = q_sq + k_sq.transpose(-2, -1) - 2 * dot_term  # [B, H, S, S]
         
-        # Dist Sq: [B, H, S, S]
-        # [S, 1] + [1, S] - [S, S]
-        dist_sq = q_sq + k_sq.transpose(-2, -1) - 2 * dot_term
+        # c. Log determinant: Σ_d log(σ_q^d) + Σ_d log(σ_k^d)
+        log_det_q = torch.log(q_sigma).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
+        log_det_k = torch.log(k_sigma).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
+        log_det = log_det_q + log_det_k.transpose(-2, -1)  # [B, H, S, S]
         
-        # b. Sigma terms (Scalar Approximation)
-        # q_sigma: [B, H, S, D] -> [B, H, S, 1]
-        q_sigma_scalar = q_sigma.mean(dim=-1, keepdim=True)
-        k_sigma_scalar = k_sigma.mean(dim=-1, keepdim=True)
-        
-        # Sigma Sum: [B, H, S, S]
-        sigma_sum = q_sigma_scalar + k_sigma_scalar.transpose(-2, -1)
-        
-        # c. Combine
-        # Weighted Distance: dist_sq / sigma_sum
-        weighted_dist = dist_sq / sigma_sum
-        
-        # Log Det: D * log(sigma_sum)
-        # Note: In standard W2, we sum log(sigma_i + sigma_j) over D dimensions.
-        # Here we assume isotropic, so it's D * log(scalar_sigma_sum).
-        # However, to keep scale comparable to naive (which sums D logs), we multiply by D.
-        # But wait, naive was log(sigma_sum_vector).sum(-1). 
-        # approximate: sum(log(scalar)) = D * log(scalar)
-        log_det = self.head_dim * torch.log(sigma_sum)
-        
-        # Final Score
+        # d. Final attention score
         attn_scores = -0.5 * (weighted_dist + log_det)
 
         if attention_mask is not None:

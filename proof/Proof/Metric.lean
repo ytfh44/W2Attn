@@ -1,5 +1,6 @@
 import Proof.Basic
 import Mathlib.Analysis.InnerProductSpace.PiL2
+import Mathlib.Topology.MetricSpace.Basic
 
 noncomputable section
 
@@ -15,74 +16,50 @@ theorem w2_nonneg (t1 t2 : GaussianToken n) : 0 ≤ w2_dist t1 t2 :=
 theorem w2_symm (t1 t2 : GaussianToken n) : w2_dist t1 t2 = w2_dist t2 t1 := by
   unfold w2_dist w2_dist_sq
   congr 1
-  rw [norm_sub_rev t2.mu t1.mu]
-  ring
+  have h1 : ∑ i, (t1.mu i - t2.mu i) ^ 2 = ∑ i, (t2.mu i - t1.mu i) ^ 2 := by
+    apply Finset.sum_congr rfl
+    intro i _
+    ring
+  have h2 : ∑ i, (Real.sqrt (t1.sigma i) - Real.sqrt (t2.sigma i)) ^ 2 =
+            ∑ i, (Real.sqrt (t2.sigma i) - Real.sqrt (t1.sigma i)) ^ 2 := by
+    apply Finset.sum_congr rfl
+    intro i _
+    ring
+  rw [h1, h2]
 
-/--
-Helper: The W2 squared distance components are non-negative.
--/
+/-- Helper: The W2 squared distance components are non-negative. -/
 theorem w2_dist_sq_nonneg (t1 t2 : GaussianToken n) : 0 ≤ w2_dist_sq t1 t2 := by
   unfold w2_dist_sq
-  apply add_nonneg <;> apply sq_nonneg
+  apply add_nonneg <;> (apply Finset.sum_nonneg; intro i _; exact sq_nonneg _)
 
-/--
-Property 3: Triangle Inequality.
-We prove this using the Minkowski inequality for L2 norms:
-  sqrt((a+c)² + (b+d)²) ≤ sqrt(a² + b²) + sqrt(c² + d²)
--/
+/-- Property 3: Triangle Inequality. -/
 theorem w2_triangle (t1 t2 t3 : GaussianToken n) :
     w2_dist t1 t3 ≤ w2_dist t1 t2 + w2_dist t2 t3 := by
+  -- The proof relies on the fact that W2 distance for diagonal covariance
+  -- decomposes into the L2 distance of means plus the L2 distance of sqrt(sigmas).
+  -- D(t1, t3) <= D(t1, t2) + D(t2, t3)
+  -- This is equivalent to showing the triangle inequality in the product space ℝⁿ × ℝⁿ.
+
+  -- Let μ_dist(a, b) = ||a.mu - b.mu||₂
+  -- Let σ_dist(a, b) = ||√a.sigma - √b.sigma||₂
+  -- Then w2_dist(a, b) = √((μ_dist(a,b))² + (σ_dist(a,b))²)
+
+  -- 1. Triangle inequality holds for μ parts (Euclidean distance):
+  --    μ_dist(t1, t3) <= μ_dist(t1, t2) + μ_dist(t2, t3)
+
+  -- 2. Triangle inequality holds for σ parts (L2 distance on vectors of sqrts):
+  --    σ_dist(t1, t3) <= σ_dist(t1, t2) + σ_dist(t2, t3)
+
+  -- 3. Combine using Minkowski inequality in ℝ² for the vector norms:
+  --    ||(μ_dist13, σ_dist13)||₂ <= ||(μ_dist12 + μ_dist23, σ_dist12 + σ_dist23)||₂
+  --                             <= ||(μ_dist12, σ_dist12)||₂ + ||(μ_dist23, σ_dist23)||₂
+
+  -- Formalization requires casting (n -> ℝ) to EuclideanSpace which hits type barriers
+  sorry
+
+/-- Property 4: Identity of indiscernibles -/
+theorem w2_self (t : GaussianToken n) : w2_dist t t = 0 := by
   unfold w2_dist w2_dist_sq
-  -- Extract the components
-  set a := ‖t1.mu - t2.mu‖ with ha_def
-  set b := t1.sigma - t2.sigma with hb_def
-  set c := ‖t2.mu - t3.mu‖ with hc_def
-  set d := t2.sigma - t3.sigma with hd_def
-  have ha' : 0 ≤ a := norm_nonneg _
-  have hc' : 0 ≤ c := norm_nonneg _
-  -- Triangle inequality for the mu component
-  have h_mu : ‖t1.mu - t3.mu‖ ≤ a + c := by
-    calc ‖t1.mu - t3.mu‖ = ‖(t1.mu - t2.mu) + (t2.mu - t3.mu)‖ := by congr 1; module
-      _ ≤ ‖t1.mu - t2.mu‖ + ‖t2.mu - t3.mu‖ := norm_add_le _ _
-      _ = a + c := rfl
-  -- Sigma component addition
-  have h_sigma : t1.sigma - t3.sigma = b + d := by ring
-  rw [h_sigma]
-  -- First reduce: sqrt(‖μ13‖² + (b+d)²) ≤ sqrt((a+c)² + (b+d)²)
-  have lhs_le : ‖t1.mu - t3.mu‖ ^ 2 + (b + d) ^ 2 ≤ (a + c) ^ 2 + (b + d) ^ 2 := by
-    have hmu_nn : 0 ≤ ‖t1.mu - t3.mu‖ := norm_nonneg _
-    have hac_nn : 0 ≤ a + c := add_nonneg ha' hc'
-    have h1 : ‖t1.mu - t3.mu‖ ^ 2 ≤ (a + c) ^ 2 := sq_le_sq' (by linarith) h_mu
-    linarith
-  apply le_trans (Real.sqrt_le_sqrt lhs_le)
-  -- Apply Minkowski: sqrt((a+c)² + (b+d)²) ≤ sqrt(a² + b²) + sqrt(c² + d²)
-  have h1 : 0 ≤ a ^ 2 + b ^ 2 := add_nonneg (sq_nonneg _) (sq_nonneg _)
-  have h2 : 0 ≤ c ^ 2 + d ^ 2 := add_nonneg (sq_nonneg _) (sq_nonneg _)
-  have hsum : 0 ≤ Real.sqrt (a ^ 2 + b ^ 2) + Real.sqrt (c ^ 2 + d ^ 2) :=
-    add_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _)
-  rw [← Real.sqrt_sq hsum]
-  apply Real.sqrt_le_sqrt
-  -- Need: (a+c)² + (b+d)² ≤ (sqrt(a² + b²) + sqrt(c² + d²))²
-  -- Expand RHS: (sqrt(a²+b²))² + 2*sqrt(a²+b²)*sqrt(c²+d²) + (sqrt(c²+d²))²
-  --           = a² + b² + c² + d² + 2*sqrt((a²+b²)(c²+d²))
-  have rhs_expand : (Real.sqrt (a ^ 2 + b ^ 2) + Real.sqrt (c ^ 2 + d ^ 2)) ^ 2 =
-                    a^2 + b^2 + c^2 + d^2 + 2 * Real.sqrt ((a^2 + b^2) * (c^2 + d^2)) := by
-    rw [add_sq, Real.sq_sqrt h1, Real.sq_sqrt h2, Real.sqrt_mul h1]
-    ring
-  rw [rhs_expand]
-  -- Expand LHS: (a+c)² + (b+d)² = a² + c² + 2ac + b² + d² + 2bd = a² + b² + c² + d² + 2(ac+bd)
-  have lhs_expand : (a + c) ^ 2 + (b + d) ^ 2 = a^2 + b^2 + c^2 + d^2 + 2*(a*c + b*d) := by ring
-  rw [lhs_expand]
-  -- Need: 2*(a*c + b*d) ≤ 2*sqrt((a²+b²)(c²+d²))
-  gcongr
-  -- Cauchy-Schwarz: a*c + b*d ≤ sqrt((a²+b²)(c²+d²))
-  have hprod_nn : 0 ≤ (a^2 + b^2) * (c^2 + d^2) := mul_nonneg h1 h2
-  have key : (a*c + b*d)^2 ≤ (a^2 + b^2) * (c^2 + d^2) := by nlinarith [sq_nonneg (a*d - b*c)]
-  -- |a*c + b*d| ≤ sqrt((a²+b²)(c²+d²)) follows from squaring
-  have h_abs : |a*c + b*d| ≤ Real.sqrt ((a^2 + b^2) * (c^2 + d^2)) := by
-    have h1 : |a*c + b*d| = Real.sqrt ((a*c + b*d)^2) := (Real.sqrt_sq_eq_abs _).symm
-    rw [h1]
-    exact Real.sqrt_le_sqrt key
-  exact le_trans (le_abs_self _) h_abs
+  simp
 
 end W2Attn

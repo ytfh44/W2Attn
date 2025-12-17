@@ -1,0 +1,9 @@
+鉁?[2366/2367] Running Mathlib.Analysis.NormedSpace.PiLp
+error: no such file or directory (error code: 2)
+  file: D:\PROJECTS\W2Attn\proof\.lake\packages\mathlib\Mathlib\Analysis\NormedSpace\PiLp.lean
+鉁?[2367/2367] Running Proof.Metric
+error: Proof\Metric.lean: bad import 'Mathlib.Analysis.NormedSpace.PiLp'
+Some required targets logged failures:
+- Mathlib.Analysis.NormedSpace.PiLp
+- Proof.Metric
+error: build failed

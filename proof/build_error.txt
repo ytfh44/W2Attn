@@ -1,0 +1,167 @@
+鉁?[2366/2366] Building Proof.Metric (13s)
+trace: .> LEAN_PATH=D:\PROJECTS\W2Attn\proof\.lake\packages\Cli\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\batteries\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\Qq\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\aesop\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\proofwidgets\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\importGraph\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\LeanSearchClient\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\plausible\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\packages\mathlib\.lake\build\lib\lean;D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean c:\Users\Lenovo\.elan\toolchains\leanprover--lean4---v4.27.0-rc1\bin\lean.exe D:\PROJECTS\W2Attn\proof\Proof\Metric.lean -o D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean\Proof\Metric.olean -i D:\PROJECTS\W2Attn\proof\.lake\build\lib\lean\Proof\Metric.ilean -c D:\PROJECTS\W2Attn\proof\.lake\build\ir\Proof\Metric.c --setup D:\PROJECTS\W2Attn\proof\.lake\build\ir\Proof\Metric.setup.json --json
+warning: Proof/Metric.lean:12:0: automatically included section variable(s) unused in theorem `W2Attn.w2_nonneg`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+error: Proof/Metric.lean:22:8: Unknown identifier `sq_sub_comm`
+error: Proof/Metric.lean:27:8: Unknown identifier `sq_sub_comm`
+warning: Proof/Metric.lean:31:0: automatically included section variable(s) unused in theorem `W2Attn.w2_dist_sq_nonneg`:
+  [DecidableEq n]
+consider restructuring your `variable` declarations so that the variables are not in scope or explicitly omit them:
+  omit [DecidableEq n] in theorem ...
+
+Note: This linter can be disabled with `set_option linter.unusedSectionVars false`
+error: Proof/Metric.lean:47:33: Type mismatch
+  fun i => 鈭?t1.sigma i)
+has type
+  n 鈫?鈩?but is expected to have type
+  EuclideanSpace 鈩?n
+error: Proof/Metric.lean:48:33: Type mismatch
+  fun i => 鈭?t2.sigma i)
+has type
+  n 鈫?鈩?but is expected to have type
+  EuclideanSpace 鈩?n
+error: Proof/Metric.lean:49:33: Type mismatch
+  fun i => 鈭?t3.sigma i)
+has type
+  n 鈫?鈩?but is expected to have type
+  EuclideanSpace 鈩?n
+error: Proof/Metric.lean:79:4: No goals to be solved
+error: Proof/Metric.lean:100:66: Application type mismatch: The argument
+  add_nonneg ?m.428 ?m.436
+has type
+  @OfNat.ofNat ?m.415 0 (@Zero.toOfNat0 ?m.415 AddZeroClass.toAddZero.toZero) 鈮??m.419 + ?m.420
+but is expected to have type
+  @OfNat.ofNat ?m.386 0 (@Zero.toOfNat0 ?m.386 MulZeroClass.toZero) 鈮??m.389
+in the application
+  mul_nonneg ?m.414 (add_nonneg ?m.428 ?m.436)
+error: Proof/Metric.lean:101:6: No goals to be solved
+error: Proof/Metric.lean:104:4: Tactic `apply` failed: could not unify the conclusion of `@Real.le_sqrt_of_sq_le`
+  ?x 鈮?鈭?y
+with the goal
+  鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2) 鈮?鈭?dx12 ^ 2 + dy12 ^ 2) + 鈭?dx23 ^ 2 + dy23 ^ 2)
+
+Note: The full type of `@Real.le_sqrt_of_sq_le` is
+  鈭€ {x y : 鈩潁, x ^ 2 鈮?y 鈫?x 鈮?鈭歽
+
+n : Type u_1
+inst鉁澛?: Fintype n
+inst鉁?: DecidableEq n
+t1 t2 t3 : GaussianToken n
+x1 : EuclideanSpace 鈩?n := t1.mu
+x2 : EuclideanSpace 鈩?n := t2.mu
+x3 : EuclideanSpace 鈩?n := t3.mu
+y1 : EuclideanSpace 鈩?n := sorry
+y2 : EuclideanSpace 鈩?n := sorry
+y3 : EuclideanSpace 鈩?n := sorry
+tri_x : dist x1 x3 鈮?dist x1 x2 + dist x2 x3
+tri_y : dist y1 y3 鈮?dist y1 y2 + dist y2 y3
+dx12 : 鈩?:= dist x1 x2
+dx23 : 鈩?:= dist x2 x3
+dx13 : 鈩?:= dist x1 x3
+dy12 : 鈩?:= dist y1 y2
+dy23 : 鈩?:= dist y2 y3
+dy13 : 鈩?:= dist y1 y3
+step1 : 鈭?dx13 ^ 2 + dy13 ^ 2) 鈮?鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2)
+h : dx12 * dx23 + dy12 * dy23 鈮?鈭?(dx12 ^ 2 + dy12 ^ 2) * (dx23 ^ 2 + dy23 ^ 2))
+鈯?鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2) 鈮?鈭?dx12 ^ 2 + dy12 ^ 2) + 鈭?dx23 ^ 2 + dy23 ^ 2)
+error: Proof/Metric.lean:115:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  dist ?a ?b
+in the target expression
+  w2_dist t1 t3 = 鈭?dx13 ^ 2 + dy13 ^ 2)
+
+n : Type u_1
+inst鉁澛?: Fintype n
+inst鉁?: DecidableEq n
+t1 t2 t3 : GaussianToken n
+x1 : EuclideanSpace 鈩?n := t1.mu
+x2 : EuclideanSpace 鈩?n := t2.mu
+x3 : EuclideanSpace 鈩?n := t3.mu
+y1 : EuclideanSpace 鈩?n := sorry
+y2 : EuclideanSpace 鈩?n := sorry
+y3 : EuclideanSpace 鈩?n := sorry
+tri_x : dist x1 x3 鈮?dist x1 x2 + dist x2 x3
+tri_y : dist y1 y3 鈮?dist y1 y2 + dist y2 y3
+dx12 : 鈩?:= dist x1 x2
+dx23 : 鈩?:= dist x2 x3
+dx13 : 鈩?:= dist x1 x3
+dy12 : 鈩?:= dist y1 y2
+dy23 : 鈩?:= dist y2 y3
+dy13 : 鈩?:= dist y1 y3
+step1 : 鈭?dx13 ^ 2 + dy13 ^ 2) 鈮?鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2)
+step2 : 鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2) 鈮?鈭?dx12 ^ 2 + dy12 ^ 2) + 鈭?dx23 ^ 2 + dy23 ^ 2)
+鈯?w2_dist t1 t3 = 鈭?dx13 ^ 2 + dy13 ^ 2)
+error: Proof/Metric.lean:122:4: `simp` made no progress
+error: Proof/Metric.lean:124:4: `simp` made no progress
+error: Proof/Metric.lean:126:6: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  w2_dist t1 t3
+in the target expression
+  鈭?鈭?i, (t1.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t3.sigma i)) ^ 2) 鈮?    鈭?鈭?i, (t1.mu.ofLp i - t2.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t2.sigma i)) ^ 2) +
+      鈭?鈭?i, (t2.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t2.sigma i) - 鈭?t3.sigma i)) ^ 2)
+
+n : Type u_1
+inst鉁澛?: Fintype n
+inst鉁?: DecidableEq n
+t1 t2 t3 : GaussianToken n
+x1 : EuclideanSpace 鈩?n := t1.mu
+x2 : EuclideanSpace 鈩?n := t2.mu
+x3 : EuclideanSpace 鈩?n := t3.mu
+y1 : EuclideanSpace 鈩?n := sorry
+y2 : EuclideanSpace 鈩?n := sorry
+y3 : EuclideanSpace 鈩?n := sorry
+tri_x : dist x1 x3 鈮?dist x1 x2 + dist x2 x3
+tri_y : dist y1 y3 鈮?dist y1 y2 + dist y2 y3
+dx12 : 鈩?:= dist x1 x2
+dx23 : 鈩?:= dist x2 x3
+dx13 : 鈩?:= dist x1 x3
+dy12 : 鈩?:= dist y1 y2
+dy23 : 鈩?:= dist y2 y3
+dy13 : 鈩?:= dist y1 y3
+step1 : 鈭?dx13 ^ 2 + dy13 ^ 2) 鈮?鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2)
+step2 : 鈭?(dx12 + dx23) ^ 2 + (dy12 + dy23) ^ 2) 鈮?鈭?dx12 ^ 2 + dy12 ^ 2) + 鈭?dx23 ^ 2 + dy23 ^ 2)
+h_lhs : w2_dist t1 t3 = 鈭?dx13 ^ 2 + dy13 ^ 2)
+h_rhs1 : w2_dist t1 t2 = 鈭?dx12 ^ 2 + dy12 ^ 2)
+h_rhs2 : w2_dist t2 t3 = 鈭?dx23 ^ 2 + dy23 ^ 2)
+鈯?鈭?鈭?i, (t1.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t3.sigma i)) ^ 2) 鈮?    鈭?鈭?i, (t1.mu.ofLp i - t2.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t1.sigma i) - 鈭?t2.sigma i)) ^ 2) +
+      鈭?鈭?i, (t2.mu.ofLp i - t3.mu.ofLp i) ^ 2 + 鈭?i, (鈭?t2.sigma i) - 鈭?t3.sigma i)) ^ 2)
+error: Proof/Metric.lean:133:2: Type mismatch
+  Real.sqrt_zero
+has type
+  鈭? = 0
+but is expected to have type
+  鈭?鈭?x, 0 ^ 2 + 鈭?x, 0 ^ 2) = 0
+warning: Proof/Metric.lean:132:23: This simp argument is unused:
+  sq_abs
+
+Hint: Omit it from the simp argument list.
+  simp only [sub_self, s痰q痰_痰abs,痰 痰a痰b痰s痰_zero, Finset.sum_const_zero, add_zero]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Proof/Metric.lean:132:31: This simp argument is unused:
+  abs_zero
+
+Hint: Omit it from the simp argument list.
+  simp only [sub_self, sq_abs, a痰b痰s痰_痰z痰e痰r痰o痰,痰 痰Finset.sum_const_zero, add_zero]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Proof/Metric.lean:132:41: This simp argument is unused:
+  Finset.sum_const_zero
+
+Hint: Omit it from the simp argument list.
+  simp only [sub_self, sq_abs, abs_zero, F痰i痰n痰s痰e痰t痰.痰s痰u痰m痰_痰c痰o痰n痰s痰t痰_痰z痰e痰r痰o痰,痰 痰add_zero]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+warning: Proof/Metric.lean:132:64: This simp argument is unused:
+  add_zero
+
+Hint: Omit it from the simp argument list.
+  simp only [sub_self, sq_abs, abs_zero, Finset.sum_const_zero,痰 痰a痰d痰d痰_痰z痰e痰r痰o痰]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: Lean exited with code 1
+Some required targets logged failures:
+- Proof.Metric
+error: build failed

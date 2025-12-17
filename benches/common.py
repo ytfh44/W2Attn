@@ -73,7 +73,8 @@ def train_and_evaluate(
             "final_loss": metrics_log[-1]['loss'] if metrics_log else None
         }
 
-    torch.cuda.reset_peak_memory_stats()
+    if device == "cuda" and torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
     start_time = time.time()
     
     losses = []
@@ -94,7 +95,7 @@ def train_and_evaluate(
             if (i + 1) % 100 == 0:
                 avg_loss = sum(losses[-100:]) / 100
                 elapsed = time.time() - start_time
-                max_mem = torch.cuda.max_memory_allocated() / 1024 / 1024
+                max_mem = torch.cuda.max_memory_allocated() / 1024 / 1024 if (device == "cuda" and torch.cuda.is_available()) else 0
                 
                 print(f"Step {i+1}/{steps} | Loss: {avg_loss:.4f} | Time: {elapsed:.2f}s | Mem: {max_mem:.2f}MB", flush=True)
                 
