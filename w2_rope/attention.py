@@ -64,11 +64,7 @@ class W2Attention(nn.Module):
         q_sigma = F.softplus(q_sigma_raw) + 1e-4
         k_sigma = F.softplus(k_sigma_raw) + 1e-4
         
-        # 4. RoPE (Only apply to Mu)
-        cos, sin = rotary_emb_outputs
-        q_mu, k_mu = apply_rotary_pos_emb(q_mu, k_mu, cos, sin)
-        
-        # 5. Calculate Score (Diagonal Covariance - Per-Dimension Weighting)
+        # 4. Calculate Score (Diagonal Covariance - Per-Dimension Weighting)
         # =================================================================
         # W2 distance for diagonal Gaussians:
         #   D² = Σ_d [(μ_q^d - μ_k^d)² / (σ_q^d + σ_k^d)] + Σ_d log(σ_q^d + σ_k^d)
@@ -84,6 +80,12 @@ class W2Attention(nn.Module):
         # a. Weighted Q/K in transformed space
         q_weighted = q_mu / torch.sqrt(q_sigma)  # [B, H, S, D]
         k_weighted = k_mu / torch.sqrt(k_sigma)  # [B, H, S, D]
+
+        # 5. RoPE (Apply to Weighted Mu)
+        # Apply RoPE after weighting to preserve relative position invariance
+        # when sigma is non-uniform across RoPE pairs.
+        cos, sin = rotary_emb_outputs
+        q_weighted, k_weighted = apply_rotary_pos_emb(q_weighted, k_weighted, cos, sin)
         
         # b. Squared distance in weighted space: ||q̃||² + ||k̃||² - 2⟨q̃, k̃⟩
         q_sq = (q_weighted ** 2).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
