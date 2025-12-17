@@ -69,31 +69,45 @@ class W2Attention(nn.Module):
         q_mu, k_mu = apply_rotary_pos_emb(q_mu, k_mu, cos, sin)
         
         # 5. Calculate Score (Gaussian Overlap / Variance Scaled Distance)
-        # We want to compute pairwise metric between S_q and S_k
-        # S_i,j = - (mu_i - mu_j)^2 / (sigma_i + sigma_j) - log(sigma_i + sigma_j)
+        # OPTIMIZED IMPLEMENTATION
+        # We approximate sigma as a scalar (mean over dim) to avoid O(S^2 D) memory
+        # Scores = -0.5 * ( ||mu_q - mu_k||^2 / (sigma_q + sigma_k) + D * log(sigma_q + sigma_k) )
         
-        # q_mu: [B, H, S_q, 1, D]
-        # k_mu: [B, H, 1, S_k, D]
-        q_mu_exp = q_mu.unsqueeze(3)
-        k_mu_exp = k_mu.unsqueeze(2)
+        # a. Squared Euclidean Distance ||mu_q - mu_k||^2 = ||q||^2 + ||k||^2 - 2 <q, k>
+        # q_mu: [B, H, S, D]
+        q_sq = (q_mu ** 2).sum(dim=-1, keepdim=True) # [B, H, S, 1]
+        k_sq = (k_mu ** 2).sum(dim=-1, keepdim=True) # [B, H, S, 1]
         
-        # Sigma Sum: [B, H, Seq, Seq, D] -> [B, H, S_q, S_k, D]
-        q_sigma_exp = q_sigma.unsqueeze(3)
-        k_sigma_exp = k_sigma.unsqueeze(2)
-        sigma_sum = q_sigma_exp + k_sigma_exp 
+        # Dot term: [B, H, S, S]
+        dot_term = torch.matmul(q_mu, k_mu.transpose(-2, -1))
         
-        # Weighted Distance part
-        # ((q_mu - k_mu)^2 / sigma_sum).sum(dim=-1)
-        weighted_dist = ((q_mu_exp - k_mu_exp).pow(2) / sigma_sum).sum(dim=-1)
+        # Dist Sq: [B, H, S, S]
+        # [S, 1] + [1, S] - [S, S]
+        dist_sq = q_sq + k_sq.transpose(-2, -1) - 2 * dot_term
         
-        # Log Determinant part
-        # sum(log(sigma_sum))
-        log_det = torch.log(sigma_sum).sum(dim=-1)
+        # b. Sigma terms (Scalar Approximation)
+        # q_sigma: [B, H, S, D] -> [B, H, S, 1]
+        q_sigma_scalar = q_sigma.mean(dim=-1, keepdim=True)
+        k_sigma_scalar = k_sigma.mean(dim=-1, keepdim=True)
         
-        # Final Energy Score (Negative "Energy" = Positive Similarity)
-        # Factor 0.5 comes from Gaussian PDF log-likelihood
+        # Sigma Sum: [B, H, S, S]
+        sigma_sum = q_sigma_scalar + k_sigma_scalar.transpose(-2, -1)
+        
+        # c. Combine
+        # Weighted Distance: dist_sq / sigma_sum
+        weighted_dist = dist_sq / sigma_sum
+        
+        # Log Det: D * log(sigma_sum)
+        # Note: In standard W2, we sum log(sigma_i + sigma_j) over D dimensions.
+        # Here we assume isotropic, so it's D * log(scalar_sigma_sum).
+        # However, to keep scale comparable to naive (which sums D logs), we multiply by D.
+        # But wait, naive was log(sigma_sum_vector).sum(-1). 
+        # approximate: sum(log(scalar)) = D * log(scalar)
+        log_det = self.head_dim * torch.log(sigma_sum)
+        
+        # Final Score
         attn_scores = -0.5 * (weighted_dist + log_det)
-        
+
         if attention_mask is not None:
              # attention_mask shape: [bs, 1, 1, k_len] or similar
             attn_scores = attn_scores + attention_mask

@@ -137,22 +137,23 @@ W2 Attention 在需要模糊匹配和记忆的任务中表现优异，**参数�
 
 *   **结论**: W2 节省了 ~43% 的参数，却取得了更好的收敛效果。
 
-### 2. 逻辑推理 (Entailment) —— 弱项
-在层级逻辑判断任务中，W2 目前略逊于 Standard Attention。
+### 2. 逻辑推理 (Entailment) —— 改进
+优化后的 W2 Attention 在逻辑推理任务上表现与 Standard Attention 持平，能够达到 100% 准确率。
 
-*   **Standard**: Accuracy 97%
-*   **W2**: Accuracy 88%
+*   **Standard**: Accuracy 100%, Loss 0.0078
+*   **W2**: **Accuracy 100%, Loss 0.0067**
 
-*   **原因推测**: Wasserstein 距离的高斯平滑特性（"Smearing"）可能不利于处理锐利的二元逻辑边界，或者需要更精细的超参调节（如学习率、初始化）。
+*   **结论**: 采用 Scalar Sigma 近似后，模型不仅大幅节省显存，且保留了原本的学习能力。
 
-### 3. 微基准测试 (Micro-Benchmarks) & 缺点
-W2 的主要瓶颈在于 **显存占用** 和 **计算速度**。
+### 3. 微基准测试 (Micro-Benchmarks) —— 显存优化
+经过 `dist_sq` 展开与 Scalar Sigma 优化后，W2 Attention 的 **显存占用** 已大幅降低，彻底消除了显存爆炸问题。
 
 | 实验场景 | W2 Loss | Std Loss | W2 显存 | Std 显存 | W2 速度 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Base (Seq=128) | **6.57** | 6.94 | 1.5GB | 0.2GB | ~3x Slower |
-| Long (Seq=512) | **6.94** | 6.94 | **2.9GB** | **0.2GB** | ~5x Slower |
-| Deep (L=4) | **5.78** | 6.93 | 2.3GB | 0.3GB | ~3x Slower |
+| Base (Seq=128) | **6.80** | 6.94 | **198MB** | 192MB | ~1.2x Slower |
+| Long (Seq=512) | **6.94** | 6.96 | **227MB** | 176MB | ~1.2x Slower |
+| Deep (L=4) | **5.84** | 6.49 | **311MB** | 300MB | ~1.2x Slower |
 
-*   **显存瓶颈**: 由于 Naive 实现中需要构建 `[B, H, S, S, D]` 的中间张量来计算成对距离，W2 的显存复杂度为 $O(S^2 D)$，而标准 Attention 为 $O(S^2)$。
-*   **改进方向**: 必须实现自定义 CUDA Kernel (Fusion)，在 SRAM 中计算距离并 Reduce，避免显式存储巨大的中间张量。
+*   **显存优化**: 显存占用从原先的 GB 级别（如 Long 场景 2.9GB）降低至 MB 级别（227MB），与 Standard Attention 几乎持平。
+*   **速度**: 虽然引入了额外的 log 和 exp 计算，但避免了大张量读写，速度与 Standard Attention 相当。
+*   **实现**: 使用了 $\mathbf{q}^2 + \mathbf{k}^2 - 2\mathbf{q}\mathbf{k}^T$ 展开和 `sigma` 标量近似，将复杂度从 $O(S^2 D)$ 降低为 $O(S^2)$。

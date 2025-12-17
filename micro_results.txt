@@ -1,0 +1,49 @@
+Running Micro Suite...
+Exp: base_seq128
+Initializing w2 model...
+Params: 278912
+Step 100/500 | Loss: 7.0639 | Time: 5.64s | Mem: 197.59MB
+Step 200/500 | Loss: 7.0163 | Time: 10.01s | Mem: 197.59MB
+Step 300/500 | Loss: 6.9826 | Time: 13.49s | Mem: 197.59MB
+Step 400/500 | Loss: 6.9383 | Time: 17.23s | Mem: 197.59MB
+Step 500/500 | Loss: 6.8316 | Time: 20.43s | Mem: 197.59MB
+Initializing standard model...
+Params: 492096
+Step 100/500 | Loss: 7.0624 | Time: 2.90s | Mem: 192.27MB
+Step 200/500 | Loss: 7.0171 | Time: 5.84s | Mem: 192.27MB
+Step 300/500 | Loss: 6.9883 | Time: 8.85s | Mem: 192.27MB
+Step 400/500 | Loss: 6.9574 | Time: 11.42s | Mem: 192.27MB
+Step 500/500 | Loss: 6.9408 | Time: 14.53s | Mem: 192.27MB
+Exp: long_seq512
+Initializing w2 model...
+Params: 278912
+Step 100/500 | Loss: 7.0659 | Time: 3.91s | Mem: 226.66MB
+Step 200/500 | Loss: 7.0294 | Time: 8.04s | Mem: 226.66MB
+Step 300/500 | Loss: 6.9993 | Time: 12.01s | Mem: 226.66MB
+Step 400/500 | Loss: 6.9517 | Time: 15.74s | Mem: 226.66MB
+Step 500/500 | Loss: 6.9401 | Time: 19.67s | Mem: 226.66MB
+Initializing standard model...
+Params: 492096
+Step 100/500 | Loss: 7.0670 | Time: 3.16s | Mem: 175.69MB
+Step 200/500 | Loss: 7.0266 | Time: 5.73s | Mem: 175.69MB
+Step 300/500 | Loss: 7.0043 | Time: 8.83s | Mem: 175.69MB
+Step 400/500 | Loss: 6.9571 | Time: 12.34s | Mem: 175.69MB
+Step 500/500 | Loss: 6.9443 | Time: 15.05s | Mem: 175.69MB
+Exp: large_h128
+Initializing w2 model...
+Params: 852736
+Step 100/500 | Loss: 7.0666 | Time: 3.71s | Mem: 171.87MB
+Step 200/500 | Loss: 7.0295 | Time: 7.36s | Mem: 171.87MB
+Step 300/500 | Loss: 7.0037 | Time: 11.14s | Mem: 171.87MB
+Step 400/500 | Loss: 6.9509 | Time: 16.28s | Mem: 171.87MB
+Step 500/500 | Loss: 5.9411 | Time: 22.91s | Mem: 171.87MB
+Initializing standard model...
+Params: 1574016
+Step 100/500 | Loss: 7.0692 | Time: 3.91s | Mem: 173.59MB
+Step 200/500 | Loss: 7.0333 | Time: 7.21s | Mem: 173.59MB
+Step 300/500 | Loss: 7.0095 | Time: 10.19s | Mem: 173.59MB
+Step 400/500 | Loss: 6.9741 | Time: 13.56s | Mem: 173.59MB
+Step 500/500 | Loss: 6.9543 | Time: 16.67s | Mem: 173.59MB
+Exp: deep_l4
+Initializing w2 model...
+Params: 426624
