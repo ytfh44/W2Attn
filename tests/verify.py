@@ -48,16 +48,14 @@ def run_tests():
     try:
         attn = W2Attention(config)
         bs, seq_len = 2, 10
-        mu = torch.randn(bs, seq_len, config.hidden_size)
-        log_sigma = torch.randn(bs, seq_len, config.hidden_size)
+        hidden_states = torch.randn(bs, seq_len, config.hidden_size)
         head_dim = config.hidden_size // config.num_attention_heads
         rope = RotaryEmbedding(head_dim)
-        cos, sin = rope(mu, seq_len=seq_len)
+        cos, sin = rope(hidden_states, seq_len=seq_len)
         
-        out_mu, out_log_sigma = attn(mu, log_sigma, (cos, sin))
+        out_hidden = attn(hidden_states, (cos, sin))
         
-        assert out_mu.shape == (bs, seq_len, config.hidden_size)
-        assert out_log_sigma.shape == (bs, seq_len, config.hidden_size)
+        assert out_hidden.shape == (bs, seq_len, config.hidden_size)
         print(" PASSED")
     except Exception as e:
         print(f" FAILED: {e}")
@@ -69,16 +67,14 @@ def run_tests():
     try:
         block = W2TransformerBlock(config)
         bs, seq_len = 2, 16
-        mu = torch.randn(bs, seq_len, config.hidden_size)
-        log_sigma = torch.randn(bs, seq_len, config.hidden_size)
+        hidden_states = torch.randn(bs, seq_len, config.hidden_size)
         head_dim = config.hidden_size // config.num_attention_heads
         rope = RotaryEmbedding(head_dim)
-        cos, sin = rope(mu, seq_len=seq_len)
+        cos, sin = rope(hidden_states, seq_len=seq_len)
         
-        out_mu, out_log_sigma = block(mu, log_sigma, (cos, sin))
+        out_hidden = block(hidden_states, (cos, sin))
         
-        assert out_mu.shape == (bs, seq_len, config.hidden_size)
-        assert out_log_sigma.shape == (bs, seq_len, config.hidden_size)
+        assert out_hidden.shape == (bs, seq_len, config.hidden_size)
         print(" PASSED")
     except Exception as e:
         print(f" FAILED: {e}")
@@ -90,18 +86,16 @@ def run_tests():
     try:
         block = W2TransformerBlock(config)
         bs, seq_len = 2, 5
-        mu = torch.randn(bs, seq_len, config.hidden_size, requires_grad=True)
-        log_sigma = torch.randn(bs, seq_len, config.hidden_size, requires_grad=True)
+        hidden_states = torch.randn(bs, seq_len, config.hidden_size, requires_grad=True)
         head_dim = config.hidden_size // config.num_attention_heads
         rope = RotaryEmbedding(head_dim)
-        cos, sin = rope(mu, seq_len=seq_len)
+        cos, sin = rope(hidden_states, seq_len=seq_len)
         
-        out_mu, out_log_sigma = block(mu, log_sigma, (cos, sin))
-        loss = out_mu.mean() + out_log_sigma.mean()
+        out_hidden = block(hidden_states, (cos, sin))
+        loss = out_hidden.mean()
         loss.backward()
         
-        assert mu.grad is not None
-        assert log_sigma.grad is not None
+        assert hidden_states.grad is not None
         print(" PASSED")
     except Exception as e:
         print(f" FAILED: {e}")

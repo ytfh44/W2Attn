@@ -5,29 +5,26 @@
 
 ## 📖 核心原理
 
-每一个 Token 被建模为一个对角高斯分布 $\mathcal{N}(\boldsymbol{\mu}, \text{diag}(\boldsymbol{\sigma}^2))$。网络维护两个独立的残差流：
-1.  **均值流 (Mean Stream, $\boldsymbol{\mu}$)**: 代表特征的中心位置。
-2.  **不确定性流 (Uncertainty Stream, $\mathbf{l} = \log \boldsymbol{\Sigma}$)**: 代表特征的不确定性（方差的对数）。
+虽然在注意力机制内部每一个 Token 被建模为一个对角高斯分布 $\mathcal{N}(\boldsymbol{\mu}, \text{diag}(\boldsymbol{\sigma}^2))$，但为了兼容标准 Transformer 架构并节省显存，本实现采用 **统一残差流 (Unified Residual Stream)** 设计：
 
-### 1. Wasserstein-2 注意力
-注意力分数由两个分布间的 $W_2^2$ 距离决定：
-$$
-S_{m,n} = - \frac{D_{\mu}^2(m, n) + D_{\sigma}^2}{\tau}
-$$
-其中：
--   **位置项** $D_{\mu}^2$: 通过 RoPE 旋转后的向量欧氏距离计算。
--   **形态项** $D_{\sigma}^2$: 标准差向量之间的欧氏距离。
+1.  **统一流**: 网络在层与层之间传递单一的隐藏状态向量 $\mathbf{h} \in \mathbb{R}^d$。
+2.  **内部投影**: 在 W2 Attention 层内部，隐藏状态被投影并切分为 **均值 ($\boldsymbol{\mu}$)** 和 **不确定性 ($\boldsymbol{\sigma}$)** 分量。
+3.  **W2 注意力计算**:
+    注意力分数由两个分布间的 $W_2^2$ 距离决定：
+    $$
+    S_{m,n} = - \frac{D_{\mu}^2(m, n) + D_{\sigma}^2}{\tau}
+    $$
+    其中：
+    -   **位置项** $D_{\mu}^2$: 通过 RoPE 旋转后的向量欧氏距离计算。
+    -   **形态项** $D_{\sigma}^2$: 标准差向量之间的欧氏距离。
 
-### 2. 旋转位置编码 (RoPE)
-RoPE 仅应用于 **均值流** ($\boldsymbol{\mu}$)，保持不确定性流的位置不变性。这使得模型能够捕捉绝对和相对位置信息，同时处理分布的几何特性。
-
-### 3. 输出聚合
--   **均值输出**: 值的加权算术平均。
--   **不确定性输出**: 值的加权几何平均（对数域的算术平均），反映了不确定性的聚合。
+### 旋转位置编码 (RoPE)
+RoPE 仅应用于注意力层内部的 **均值分量** ($\boldsymbol{\mu}$)，保持不确定性分量的位置不变性。这使得模型能够捕捉绝对和相对位置信息。
 
 ## 📂 项目结构
 
-d:/PROJECTS/W2Attn/
+```text
+W2Attn/
 ├── w2_rope/
 │   ├── __init__.py     # Exports
 │   ├── attention.py    # W2Attention & StandardAttention
@@ -41,7 +38,8 @@ d:/PROJECTS/W2Attn/
 │   ├── common.py         # Shared Benchmark Utils
 │   └── hierarchy.py      # Entailment Data Generator
 ├── tests/
-│   └── ...
+│   ├── test_components.py
+│   └── verify.py
 ├── README.md
 └── pyproject.toml
 ```
@@ -58,7 +56,7 @@ pip install torch numpy einops
 
 ## 🚀 快速开始
 
-如何使用 `W2TransformerBlock` 构建模型：
+如何使用 `W2TransformerBlock` 构建模型（注意：接口采用统一流输入）：
 
 ```python
 import torch
@@ -80,25 +78,22 @@ block = W2TransformerBlock(config)
 head_dim = config.hidden_size // config.num_attention_heads
 rope = RotaryEmbedding(head_dim)
 
-# 3. 准备输入 (双流)
-# 均值流 (Batch, Seq, Hidden)
-mu = torch.randn(bs, seq_len, config.hidden_size)
-# 不确定性流 (log sigma)
-log_sigma = torch.randn(bs, seq_len, config.hidden_size)
+# 3. 准备输入 (统一流)
+# Hidden States (Batch, Seq, Hidden)
+hidden_states = torch.randn(bs, seq_len, config.hidden_size)
 
 # 4. 计算 RoPE 旋转项
 # 需在外部计算并传入，以便在多层间共享或缓存
-cos, sin = rope(mu, seq_len=seq_len)
+# RoPE 仅需基于序列长度计算一次
+cos, sin = rope(hidden_states, seq_len=seq_len)
 
 # 5. 前向传播
-out_mu, out_log_sigma = block(
-    hidden_states_mu=mu, 
-    hidden_states_log_sigma=log_sigma, 
+out_hidden = block(
+    hidden_states=hidden_states, 
     rotary_emb_outputs=(cos, sin)
 )
 
-print(f"Output Mean Shape: {out_mu.shape}")       # [2, 64, 512]
-print(f"Output Sigma Shape: {out_log_sigma.shape}") # [2, 64, 512]
+print(f"Output Shape: {out_hidden.shape}")       # [2, 64, 512]
 ```
 
 ## ✅ 验证
@@ -123,9 +118,10 @@ Test 4: Gradients... PASSED
 1.  **距离计算优化**:
     在计算 $D_{\mu}^2$ 时，使用了展开公式 $\|\mathbf{q}\|^2 + \|\mathbf{k}\|^2 - 2 \mathbf{q}^T \mathcal{R}\mathbf{k}$ 以充分利用矩阵乘法加速。
 2.  **数值稳定性**:
-    Attention 分署除以 $\tau + \epsilon$ 防止除零错误。
-3.  **双流 FFN**:
-    使用 SwiGLU 激活函数，均值流和不确定性流拥有独立的权重参数，互如果不干扰。
+    Attention 分数除以 $\tau + \epsilon$ 防止除零错误。
+    Sigma 激活使用了 `Softplus` 以保证非负性。
+3.  **FFN**:
+    使用标准的 SwiGLU FFN 处理统一的隐藏状态。均值和不确定性的交互发生在自注意力层的混合过程中，随后被投影回统一流。
 
 ## 📊 性能分析 (Performance Analysis)
 
