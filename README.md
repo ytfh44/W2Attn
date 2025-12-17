@@ -27,18 +27,22 @@ RoPE 仅应用于 **均值流** ($\boldsymbol{\mu}$)，保持不确定性流的�
 
 ## 📂 项目结构
 
-```text
 d:/PROJECTS/W2Attn/
 ├── w2_rope/
-│   ├── __init__.py
-│   ├── attention.py    # W2Attention 核心实现 (W2 距离计算, 双流投影)
-│   ├── rope.py         # RotaryEmbedding 实现 (仅作用于均值)
-│   ├── ffn.py          # W2FeedForward (双流 SwiGLU) 和 RMSNorm
-│   └── block.py        # W2TransformerBlock (完整的 Transformer 块)
+│   ├── __init__.py     # Exports
+│   ├── attention.py    # W2Attention & StandardAttention
+│   ├── rope.py         # RotaryEmbedding
+│   ├── ffn.py          # FeedForward & RMSNorm
+│   ├── block.py        # W2TransformerBlock & StandardBlock
+│   ├── config.py       # ModelConfig
+│   └── model.py        # LanguageModel (Unified Model Wrapper)
+├── benches/
+│   ├── run_benchmarks.py # Unified Benchmark Entry Point
+│   ├── common.py         # Shared Benchmark Utils
+│   └── hierarchy.py      # Entailment Data Generator
 ├── tests/
-│   ├── verify.py       # 手动验证脚本 (Shapes, Forward, Gradients)
-│   └── test_components.py # Pytest 测试用例
-├── README.md           # 项目文档
+│   └── ...
+├── README.md
 └── pyproject.toml
 ```
 
@@ -122,3 +126,37 @@ Test 4: Gradients... PASSED
     Attention 分署除以 $\tau + \epsilon$ 防止除零错误。
 3.  **双流 FFN**:
     使用 SwiGLU 激活函数，均值流和不确定性流拥有独立的权重参数，互如果不干扰。
+
+## 📊 性能分析 (Performance Analysis)
+
+基于 `benches/run_benchmarks.py` 的测试结果 (2025.12):
+
+### 1. 关联记忆 (Associative Recall) —— 强项
+W2 Attention 在需要模糊匹配和记忆的任务中表现优异，**参数利用率极高**。
+
+| 模型 | 参数量 | Loss | 备注 |
+| :--- | :--- | :--- | :--- |
+| **Standard Attention** | 492k | 3.68 | Baseline |
+| **W2 Attention** | **279k** | **3.45** | **更少参数，更低 Loss** |
+
+*   **结论**: W2 节省了 ~43% 的参数，却取得了更好的收敛效果。
+
+### 2. 逻辑推理 (Entailment) —— 弱项
+在层级逻辑判断任务中，W2 目前略逊于 Standard Attention。
+
+*   **Standard**: Accuracy 97%
+*   **W2**: Accuracy 88%
+
+*   **原因推测**: Wasserstein 距离的高斯平滑特性（"Smearing"）可能不利于处理锐利的二元逻辑边界，或者需要更精细的超参调节（如学习率、初始化）。
+
+### 3. 微基准测试 (Micro-Benchmarks) & 缺点
+W2 的主要瓶颈在于 **显存占用** 和 **计算速度**。
+
+| 实验场景 | W2 Loss | Std Loss | W2 显存 | Std 显存 | W2 速度 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Base (Seq=128) | **6.57** | 6.94 | 1.5GB | 0.2GB | ~3x Slower |
+| Long (Seq=512) | **6.94** | 6.94 | **2.9GB** | **0.2GB** | ~5x Slower |
+| Deep (L=4) | **5.78** | 6.93 | 2.3GB | 0.3GB | ~3x Slower |
+
+*   **显存瓶颈**: 由于 Naive 实现中需要构建 `[B, H, S, S, D]` 的中间张量来计算成对距离，W2 的显存复杂度为 $O(S^2 D)$，而标准 Attention 为 $O(S^2)$。
+*   **改进方向**: 必须实现自定义 CUDA Kernel (Fusion)，在 SRAM 中计算距离并 Reduce，避免显式存储巨大的中间张量。

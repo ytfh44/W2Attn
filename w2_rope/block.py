@@ -1,57 +1,66 @@
 import torch
 import torch.nn as nn
-from .attention import W2Attention
-from .ffn import W2FeedForward, RMSNorm
+from .attention import W2Attention, StandardAttention
+from .ffn import RMSNorm, FeedForward
 
 class W2TransformerBlock(nn.Module):
+    """
+    W2 Block. Single Stream Input/Output.
+    Attention uses Gaussian Kernel internally.
+    """
     def __init__(self, config):
         super().__init__()
         self.hidden_size = config.hidden_size
         
-        # Norms before Attention
-        self.input_layernorm_mu = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
-        self.input_layernorm_sigma = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
-        
-        # Attention
+        # Standard Pre-Norm Architecture
+        self.input_layernorm = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
         self.attention = W2Attention(config)
         
-        # Norms before FFN
-        self.post_attention_layernorm_mu = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm_sigma = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
-        
-        # FFN
-        self.mlp = W2FeedForward(config)
+        self.post_attention_layernorm = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = FeedForward(config)
 
-    def forward(
-        self,
-        hidden_states_mu,
-        hidden_states_log_sigma,
-        rotary_emb_outputs,
-        attention_mask=None
-    ):
-        # 1. Attention Block (Pre-Norm)
-        normed_mu = self.input_layernorm_mu(hidden_states_mu)
-        normed_sigma = self.input_layernorm_sigma(hidden_states_log_sigma)
-        
-        attn_out_mu, attn_out_sigma = self.attention(
-            normed_mu,
-            normed_sigma,
+    def forward(self, hidden_states, rotary_emb_outputs, attention_mask=None):
+        # 1. Attention Block
+        normed_hidden = self.input_layernorm(hidden_states)
+        attn_out = self.attention(
+            normed_hidden,
             rotary_emb_outputs,
             attention_mask
         )
+        hidden_states = hidden_states + attn_out
         
-        # Residual Connection
-        hidden_states_mu = hidden_states_mu + attn_out_mu
-        hidden_states_log_sigma = hidden_states_log_sigma + attn_out_sigma
+        # 2. FFN Block
+        normed_hidden = self.post_attention_layernorm(hidden_states)
+        ffn_out = self.mlp(normed_hidden)
+        hidden_states = hidden_states + ffn_out
+        
+        return hidden_states
 
-        # 2. FFN Block (Pre-Norm)
-        normed_mu_ffn = self.post_attention_layernorm_mu(hidden_states_mu)
-        normed_sigma_ffn = self.post_attention_layernorm_sigma(hidden_states_log_sigma)
+class StandardBlock(nn.Module):
+    """
+    Standard Transformer Block.
+    """
+    def __init__(self, config):
+        super().__init__()
+        self.hidden_size = config.hidden_size
         
-        ffn_out_mu, ffn_out_sigma = self.mlp(normed_mu_ffn, normed_sigma_ffn)
+        self.input_layernorm = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
+        self.attention = StandardAttention(config)
         
-        # Residual Connection
-        hidden_states_mu = hidden_states_mu + ffn_out_mu
-        hidden_states_log_sigma = hidden_states_log_sigma + ffn_out_sigma
+        self.post_attention_layernorm = RMSNorm(self.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = FeedForward(config)
+
+    def forward(self, hidden_states, rotary_emb_outputs, attention_mask=None):
+        normed_hidden = self.input_layernorm(hidden_states)
+        attn_out = self.attention(
+            normed_hidden,
+            rotary_emb_outputs,
+            attention_mask
+        )
+        hidden_states = hidden_states + attn_out
         
-        return hidden_states_mu, hidden_states_log_sigma
+        normed_hidden = self.post_attention_layernorm(hidden_states)
+        ffn_out = self.mlp(normed_hidden)
+        hidden_states = hidden_states + ffn_out
+        
+        return hidden_states

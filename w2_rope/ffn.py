@@ -15,27 +15,19 @@ class RMSNorm(nn.Module):
         hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
         return self.weight * hidden_states.to(input_dtype)
 
-class SwiGLU(nn.Module):
-    def __init__(self, hidden_size, intermediate_size):
-        super().__init__()
-        self.w1 = nn.Linear(hidden_size, intermediate_size, bias=False)
-        self.w3 = nn.Linear(hidden_size, intermediate_size, bias=False)
-        self.w2 = nn.Linear(intermediate_size, hidden_size, bias=False)
-
-    def forward(self, x):
-        return self.w2(F.silu(self.w1(x)) * self.w3(x))
-
-class W2FeedForward(nn.Module):
+class FeedForward(nn.Module):
+    """
+    Standard SwiGLU FFN.
+    """
     def __init__(self, config):
         super().__init__()
-        self.hidden_size = config.hidden_size
-        self.intermediate_size = config.intermediate_size # Typically 4 * hidden or similar
+        self.hidden_dim = config.hidden_size
+        self.intermediate_dim = config.intermediate_size
+        
+        self.gate_proj = nn.Linear(self.hidden_dim, self.intermediate_dim, bias=False)
+        self.up_proj = nn.Linear(self.hidden_dim, self.intermediate_dim, bias=False)
+        self.down_proj = nn.Linear(self.intermediate_dim, self.hidden_dim, bias=False)
+        self.act_fn = nn.SiLU()
 
-        # Dual independent FFNs
-        self.mu_ffn = SwiGLU(self.hidden_size, self.intermediate_size)
-        self.sigma_ffn = SwiGLU(self.hidden_size, self.intermediate_size)
-
-    def forward(self, mu, log_sigma):
-        out_mu = self.mu_ffn(mu)
-        out_log_sigma = self.sigma_ffn(log_sigma)
-        return out_mu, out_log_sigma
+    def forward(self, x):
+        return self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
