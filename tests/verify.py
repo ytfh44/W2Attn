@@ -3,12 +3,12 @@ import sys
 import os
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dataclasses import dataclass
-from w2_rope.rope import RotaryEmbedding, apply_rotary_pos_emb
-from w2_rope.attention import W2Attention
-from w2_rope.block import W2TransformerBlock
+from w2attn.rope import RotaryEmbedding, apply_rotary_pos_emb
+from w2attn.attention import W2Attention
+from w2attn.block import W2TransformerBlock
 
 @dataclass
 class Config:

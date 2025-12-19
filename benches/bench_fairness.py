@@ -1,8 +1,8 @@
 import sys
 import os
 
-# Add parent directory to path to allow imports from w2_rope
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path to allow imports from w2attn
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
 import torch.nn as nn
@@ -14,8 +14,8 @@ from typing import Optional, Tuple, Dict, List, Any
 from dataclasses import dataclass, asdict
 
 # Import W2 components
-from w2_rope.block import W2TransformerBlock
-from w2_rope.rope import RotaryEmbedding, apply_rotary_pos_emb
+from w2attn.block import W2TransformerBlock
+from w2attn.rope import RotaryEmbedding, apply_rotary_pos_emb
 
 # ==========================================
 # 1. Config & Utils
@@ -88,7 +88,7 @@ class StandardMLP(nn.Module):
 class StandardBlock(nn.Module):
     def __init__(self, config):
         super().__init__()
-        from w2_rope.ffn import RMSNorm # Reuse same RMSNorm
+        from w2attn.ffn import RMSNorm # Reuse same RMSNorm
         self.norm1 = RMSNorm(config.hidden_size, config.rms_norm_eps)
         self.attn = StandardAttention(config)
         self.norm2 = RMSNorm(config.hidden_size, config.rms_norm_eps)

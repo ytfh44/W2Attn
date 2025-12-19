@@ -5,8 +5,8 @@ import os
 from dataclasses import asdict
 from typing import Optional, Dict, Any, List
 
-from w2_rope.model import LanguageModel
-from w2_rope.config import ModelConfig
+from w2attn.model import LanguageModel
+from w2attn.config import ModelConfig
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

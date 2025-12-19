@@ -2,15 +2,15 @@ import argparse
 import os
 import sys
 
-# Add parent directory to path to allow imports from w2_rope and benches
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path to allow imports from w2attn and benches
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
 import torch
 import torch.nn as nn
 import time
-from w2_rope.config import ModelConfig
-from w2_rope.model import LanguageModel
+from w2attn.config import ModelConfig
+from w2attn.model import LanguageModel
 from benches.common import train_and_evaluate, count_parameters
 from benches.hierarchy import HierarchyGenerator
 

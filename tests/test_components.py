@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 import pytest
-from w2_rope.rope import RotaryEmbedding, apply_rotary_pos_emb
-from w2_rope.attention import W2Attention
-from w2_rope.block import W2TransformerBlock
+from w2attn.rope import RotaryEmbedding, apply_rotary_pos_emb
+from w2attn.attention import W2Attention
+from w2attn.block import W2TransformerBlock
 
 @dataclass
 class Config:
