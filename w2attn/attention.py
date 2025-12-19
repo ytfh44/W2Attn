@@ -1,7 +1,20 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .rope import apply_rotary_pos_emb
+
+def get_alibi_slopes(n_heads):
+    def get_slopes_power_of_2(n):
+        start = (2**(-2**-(math.log2(n)-3)))
+        ratio = start
+        return [start*ratio**i for i in range(n)]
+
+    if math.log2(n_heads).is_integer():
+        return get_slopes_power_of_2(n_heads)
+    else:
+        closest_power_of_2 = 2 ** math.floor(math.log2(n_heads))
+        return get_slopes_power_of_2(closest_power_of_2) + get_slopes_power_of_2(2 * closest_power_of_2)[0::2][:n_heads - closest_power_of_2]
 
 class W2Attention(nn.Module):
     """
@@ -28,6 +41,17 @@ class W2Attention(nn.Module):
         self.k_proj = nn.Linear(self.hidden_size, self.hidden_size * 2, bias=False)
         self.v_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+
+        # Positional Encoding Config
+        self.pe_type = getattr(config, "position_embedding_type", "rope")
+        
+        if self.pe_type == "relative":
+            # Simple learnable relative bias
+            # Range: -seq_len to +seq_len -> 2 * max_pos
+            self.relative_embedding = nn.Embedding(2 * config.max_position_embeddings + 1, 1)
+        elif self.pe_type == "alibi":
+            slopes = torch.tensor(get_alibi_slopes(self.num_heads))
+            self.register_buffer("alibi_slopes", slopes)
 
         # Initialize gradients for sigma part to be small for stability
         nn.init.normal_(self.q_proj.weight, std=0.02)
@@ -81,11 +105,15 @@ class W2Attention(nn.Module):
         q_weighted = q_mu / torch.sqrt(q_sigma)  # [B, H, S, D]
         k_weighted = k_mu / torch.sqrt(k_sigma)  # [B, H, S, D]
 
-        # 5. RoPE (Apply to Weighted Mu)
-        # Apply RoPE after weighting to preserve relative position invariance
-        # when sigma is non-uniform across RoPE pairs.
-        cos, sin = rotary_emb_outputs
-        q_weighted, k_weighted = apply_rotary_pos_emb(q_weighted, k_weighted, cos, sin)
+        # 5. PE Application
+        # =================
+        
+        # RoPE: Only apply if type is 'rope'
+        if self.pe_type == "rope":
+            # Apply RoPE after weighting to preserve relative position invariance
+            # when sigma is non-uniform across RoPE pairs.
+            cos, sin = rotary_emb_outputs
+            q_weighted, k_weighted = apply_rotary_pos_emb(q_weighted, k_weighted, cos, sin)
         
         # b. Squared distance in weighted space: ||q̃||² + ||k̃||² - 2⟨q̃, k̃⟩
         q_sq = (q_weighted ** 2).sum(dim=-1, keepdim=True)  # [B, H, S, 1]
@@ -100,6 +128,42 @@ class W2Attention(nn.Module):
         
         # d. Final attention score
         attn_scores = -0.5 * (weighted_dist + log_det)
+
+        # Add ALiBi or Relative Bias
+        if self.pe_type == "alibi":
+            # shape: [1, num_heads, 1, 1]
+            slopes = self.alibi_slopes.view(1, self.num_heads, 1, 1)
+            # Create distance matrix [1, 1, S, S]
+            context_position = torch.arange(seq_len, device=hidden_states.device)[:, None]
+            memory_position = torch.arange(seq_len, device=hidden_states.device)[None, :]
+            relative_position = torch.abs(context_position - memory_position) 
+            # Non-causal absolute distance for now, or causal? 
+            # ALiBi papers usually do causal: score += slope * (j - i) for j <= i.
+            # But standard implementation is often just adding a bias matrix. 
+            # W2 is usually bidirectional in calculation but masked later.
+            # Let's use standard ALiBi causal-compatible bias: -|i-j| logic
+            # For causal: [i, j], verify input j <= i. i is query, j is key.
+            # Bias = slope * (j - i). Since j <= i, this is negative.
+            # If we want symmetric decay for non-causal: -|i-j|
+            
+            # Using -|i-j| makes it compatible with both.
+            # shape expansion: [1, 1, S, S]
+            bias = -1.0 * relative_position.view(1, 1, seq_len, seq_len).to(hidden_states.dtype)
+            attn_scores = attn_scores + (slopes * bias)
+            
+        elif self.pe_type == "relative":
+            q_idx = torch.arange(seq_len, device=hidden_states.device)[:, None]
+            k_idx = torch.arange(seq_len, device=hidden_states.device)[None, :]
+            # shift to be positive [0, 2*max]
+            relative_idx = (q_idx - k_idx) + self.config.max_position_embeddings
+            # clamp just in case
+            relative_idx = relative_idx.clamp(0, 2 * self.config.max_position_embeddings)
+            
+            # [S, S, 1]
+            rel_bias = self.relative_embedding(relative_idx)
+            # [1, 1, S, S]
+            rel_bias = rel_bias.permute(2, 0, 1).unsqueeze(0)
+            attn_scores = attn_scores + rel_bias
 
         if attention_mask is not None:
              # attention_mask shape: [bs, 1, 1, k_len] or similar
@@ -126,6 +190,13 @@ class StandardAttention(nn.Module):
         self.k_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         self.v_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         self.o_proj = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+
+        # Positional Encoding Config
+        self.pe_type = getattr(config, "position_embedding_type", "rope")
+        
+        if self.pe_type == "alibi":
+            slopes = torch.tensor(get_alibi_slopes(self.num_heads))
+            self.register_buffer("alibi_slopes", slopes)
         
     def forward(self, hidden_states, rotary_emb_outputs, attention_mask=None):
         bsz, q_len, _ = hidden_states.size()
@@ -139,10 +210,20 @@ class StandardAttention(nn.Module):
         v = v.reshape(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         
         cos, sin = rotary_emb_outputs
-        q, k = apply_rotary_pos_emb(q, k, cos, sin)
+        if self.pe_type == "rope":
+            q, k = apply_rotary_pos_emb(q, k, cos, sin)
         
         import math
         scores = torch.matmul(q, k.transpose(-1, -2)) / math.sqrt(self.head_dim)
+        
+        # Add ALiBi
+        if self.pe_type == "alibi":
+            slopes = self.alibi_slopes.view(1, self.num_heads, 1, 1)
+            context_position = torch.arange(q_len, device=hidden_states.device)[:, None]
+            memory_position = torch.arange(q_len, device=hidden_states.device)[None, :]
+            relative_position = torch.abs(context_position - memory_position)
+            bias = -1.0 * relative_position.view(1, 1, q_len, q_len).to(hidden_states.dtype)
+            scores = scores + (slopes * bias)
         
         if attention_mask is not None:
              scores = scores + attention_mask
