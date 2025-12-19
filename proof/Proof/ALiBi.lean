@@ -7,7 +7,7 @@ variable {n : Type*} [Fintype n] [DecidableEq n]
 
 namespace W2Attn
 
-/--
+/-
 ALiBi consists of adding a penalty linear in the distance between token positions.
 In W2 Attention, the base score is -1/2 * W2^2.
 ALiBi modifies this to: S_{ij} = -1/2 * W2^2 - m * |i - j|.
@@ -36,14 +36,19 @@ theorem alibi_is_regularized_cost (t1 t2 : GaussianToken n) (pos_i pos_j : ℕ) 
   unfold w2_score_alibi w2_score alibi_penalty
   ring
 
+def diag_trace_term (t1 t2 : GaussianToken n) : ℝ := (sigma_dist t1 t2) ^ 2
+
 /--
 Theorem: ALiBi does not affect the covariance structure.
 Just as RoPE only affects means, ALiBi is an additive term that is independent of the Gaussian parameters.
 It acts as a prior on the positions.
 -/
 theorem alibi_independent_of_sigma (t1 t2 : GaussianToken n) (pos_i pos_j : ℕ) (m : ℝ) :
-    w2_score_alibi t1 t2 pos_i pos_j m = -0.5 * (LinearAlgebra.dist t1.mu t2.mu ^ 2 + diag_trace_term t1 t2) - m * |(pos_i : ℝ) - (pos_j : ℝ)| := by
-  unfold w2_score_alibi w2_score w2_dist_sq alibi_penalty
-  rfl
+    w2_score_alibi t1 t2 pos_i pos_j m = -0.5 * (mu_dist t1 t2 ^ 2 + diag_trace_term t1 t2) - m * |(pos_i : ℝ) - (pos_j : ℝ)| := by
+  unfold w2_score_alibi w2_score diag_trace_term alibi_penalty
+  have h := w2_dist_eq_hypot t1 t2
+  unfold w2_dist at h
+  rw [Real.sqrt_inj (w2_dist_sq_nonneg t1 t2) (by apply add_nonneg <;> apply sq_nonneg)] at h
+  rw [h]
 
 end W2Attn
